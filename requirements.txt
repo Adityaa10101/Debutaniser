@@ -1,0 +1,8 @@
+streamlit
+xgboost
+pandas
+numpy
+matplotlib
+seaborn
+reportlab
+openpyxl
