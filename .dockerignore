@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Raw / intermediate data (large files — model reads from the processed ones)
+debutanizer_cleaned_v1.csv
+debutanizer_model_ready.csv
+
+# Old Phase B model (v2 is the production one)
+xgb_debutanizer_model.json
+
+# Development scripts (not needed to run the app)
+phase_a_preprocessing.py
+phase_b_xgb_training.py
+phase_b_revised_lag_retrain.py
+
+# IDE / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Streamlit secrets (never ship these)
+.streamlit/secrets.toml
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Readme source (keep README.md, skip the old txt)
+readme.txt

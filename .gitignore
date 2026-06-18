@@ -34,4 +34,5 @@ desktop.ini
 .streamlit/secrets.toml
 
 # Docker
-.dockerignore
+# (Dockerfile and docker-compose.yml ARE tracked)
+# .dockerignore is also tracked so CI/CD can use it
