@@ -9,8 +9,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import xgboost as xgb
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
+import plotly.graph_objects as go
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -444,38 +443,126 @@ with col_reco:
               </div>
             </div>""", unsafe_allow_html=True)
 
-# ── Row 3: Historical Trend Chart ─────────────────────────────────────────────
-st.markdown("<div class='section-header'>📈 Historical C4 Slippage Trend (Last 30 Days)</div>",
+# ── Row 3: Interactive Plotly Trend Chart ─────────────────────────────────────
+st.markdown("<div class='section-header'>📈 Historical C4 Slippage — Last 30 Days (Interactive)</div>",
             unsafe_allow_html=True)
 
-cutoff  = df.index.max() - pd.Timedelta(days=30)
+cutoff   = df.index.max() - pd.Timedelta(days=30)
 last_30d = history_df.loc[cutoff:]
-fig, ax  = plt.subplots(figsize=(14, 3.2))
-fig.patch.set_facecolor("#0f0c29")
-ax.set_facecolor("#0f0c29")
 
-ax.plot(last_30d.index, last_30d[TARGET_COL],
-        color="#818cf8", linewidth=1.2, alpha=0.9, label="Actual C4 Slippage")
-ax.axhline(SPEC_LIMIT, color="#ef4444", linewidth=1.5, linestyle="--",
-           alpha=0.8, label=f"Spec Limit ({SPEC_LIMIT} wt%)")
-ax.fill_between(last_30d.index, last_30d[TARGET_COL], SPEC_LIMIT,
-                where=(last_30d[TARGET_COL] > SPEC_LIMIT),
-                color="#ef4444", alpha=0.15, label="Off-spec zone")
-ax.axhline(prediction, color="#fbbf24", linewidth=1.5, linestyle=":",
-           alpha=0.9, label=f"Current Prediction ({prediction:.3f} wt%)")
+# Compute rolling model predictions for the same window so we can show Actual vs Predicted
+@st.cache_data
+def compute_predictions_window(cutoff_str):
+    window = df.loc[cutoff:].copy()
+    X_window = window[feature_cols]
+    preds    = model.predict(X_window)
+    return window.index, preds
 
-ax.set_xlabel("", fontsize=9, color="#64748b")
-ax.set_ylabel("C4 Slippage (wt%)", fontsize=9, color="#94a3b8")
-ax.tick_params(colors="#64748b", labelsize=8)
-for spine in ax.spines.values():
-    spine.set_edgecolor("#2d3748")
-    spine.set_linewidth(0.5)
-ax.grid(axis="y", color="#1e293b", linewidth=0.5)
-legend = ax.legend(fontsize=8, facecolor="#1e293b", edgecolor="#334155",
-                   labelcolor="#cbd5e1", loc="upper left")
-plt.tight_layout()
-st.pyplot(fig)
-plt.close()
+pred_index, pred_vals = compute_predictions_window(str(cutoff))
+
+# Off-spec mask for shaded fill
+actual_vals  = last_30d[TARGET_COL]
+spec_fill_y  = actual_vals.where(actual_vals > SPEC_LIMIT, SPEC_LIMIT)
+
+fig = go.Figure()
+
+# 1. Off-spec shaded region
+fig.add_trace(go.Scatter(
+    x    = list(actual_vals.index) + list(actual_vals.index[::-1]),
+    y    = list(spec_fill_y) + [SPEC_LIMIT] * len(actual_vals),
+    fill = "toself",
+    fillcolor = "rgba(239,68,68,0.12)",
+    line      = dict(color="rgba(0,0,0,0)"),
+    hoverinfo = "skip",
+    name      = "Off-spec zone",
+    showlegend= True,
+))
+
+# 2. Actual C4 slippage line
+fig.add_trace(go.Scatter(
+    x    = actual_vals.index,
+    y    = actual_vals.values,
+    mode = "lines",
+    name = "Actual C4 Slippage",
+    line = dict(color="#818cf8", width=2),
+    hovertemplate = "<b>%{x|%d %b %H:%M}</b><br>Actual: %{y:.4f} wt%<extra></extra>",
+))
+
+# 3. Model predicted line
+fig.add_trace(go.Scatter(
+    x    = pred_index,
+    y    = pred_vals,
+    mode = "lines",
+    name = "Model Prediction",
+    line = dict(color="#34d399", width=1.5, dash="dot"),
+    hovertemplate = "<b>%{x|%d %b %H:%M}</b><br>Predicted: %{y:.4f} wt%<extra></extra>",
+))
+
+# 4. Spec limit horizontal line
+fig.add_hline(
+    y           = SPEC_LIMIT,
+    line_dash   = "dash",
+    line_color  = "#ef4444",
+    line_width  = 1.8,
+    annotation_text      = f"Spec limit ({SPEC_LIMIT} wt%)",
+    annotation_position  = "top right",
+    annotation_font_color= "#ef4444",
+    annotation_font_size = 11,
+)
+
+# 5. Current simulation prediction marker
+fig.add_hline(
+    y           = prediction,
+    line_dash   = "dot",
+    line_color  = "#fbbf24",
+    line_width  = 1.5,
+    annotation_text      = f"Current sim: {prediction:.3f} wt%",
+    annotation_position  = "bottom right",
+    annotation_font_color= "#fbbf24",
+    annotation_font_size = 11,
+)
+
+fig.update_layout(
+    paper_bgcolor = "#0f0c29",
+    plot_bgcolor  = "#0f0c29",
+    font          = dict(family="Inter, sans-serif", color="#94a3b8", size=12),
+    height        = 340,
+    margin        = dict(l=10, r=10, t=10, b=10),
+    legend        = dict(
+        orientation = "h",
+        yanchor     = "bottom",
+        y           = 1.02,
+        xanchor     = "left",
+        x           = 0,
+        bgcolor     = "rgba(15,12,41,0.8)",
+        bordercolor = "#1e293b",
+        borderwidth = 1,
+        font        = dict(color="#cbd5e1", size=11),
+    ),
+    xaxis = dict(
+        gridcolor    = "#1e293b",
+        linecolor    = "#2d3748",
+        tickfont     = dict(color="#64748b", size=10),
+        showgrid     = True,
+    ),
+    yaxis = dict(
+        title        = "C4 Slippage (wt%)",
+        gridcolor    = "#1e293b",
+        linecolor    = "#2d3748",
+        tickfont     = dict(color="#64748b", size=10),
+        title_font   = dict(color="#94a3b8", size=11),
+        showgrid     = True,
+        zeroline     = False,
+    ),
+    hovermode  = "x unified",
+    hoverlabel = dict(
+        bgcolor   = "#1e293b",
+        bordercolor = "#334155",
+        font      = dict(color="#e2e8f0", size=12),
+    ),
+)
+
+st.plotly_chart(fig, use_container_width=True)
 
 # ── Row 4: Feature Values Table ───────────────────────────────────────────────
 with st.expander("🔍 Current Input Feature Vector (click to expand)"):
