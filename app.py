@@ -448,7 +448,8 @@ with col_reco:
 st.markdown("<div class='section-header'>📈 Historical C4 Slippage Trend (Last 30 Days)</div>",
             unsafe_allow_html=True)
 
-last_30d = history_df.last("30D")
+cutoff  = df.index.max() - pd.Timedelta(days=30)
+last_30d = history_df.loc[cutoff:]
 fig, ax  = plt.subplots(figsize=(14, 3.2))
 fig.patch.set_facecolor("#0f0c29")
 ax.set_facecolor("#0f0c29")
@@ -467,10 +468,10 @@ ax.set_xlabel("", fontsize=9, color="#64748b")
 ax.set_ylabel("C4 Slippage (wt%)", fontsize=9, color="#94a3b8")
 ax.tick_params(colors="#64748b", labelsize=8)
 for spine in ax.spines.values():
-    spine.set_edgecolor("rgba(255,255,255,0.08)")
+    spine.set_edgecolor("#2d3748")
     spine.set_linewidth(0.5)
-ax.grid(axis="y", color="rgba(255,255,255,0.05)", linewidth=0.5)
-legend = ax.legend(fontsize=8, facecolor="#1e293b", edgecolor="rgba(255,255,255,0.1)",
+ax.grid(axis="y", color="#1e293b", linewidth=0.5)
+legend = ax.legend(fontsize=8, facecolor="#1e293b", edgecolor="#334155",
                    labelcolor="#cbd5e1", loc="upper left")
 plt.tight_layout()
 st.pyplot(fig)

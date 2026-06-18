@@ -32,3 +32,6 @@ desktop.ini
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Docker
+.dockerignore

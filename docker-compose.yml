@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  debutanizer-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: debutanizer_soft_sensor
+    ports:
+      - "8501:8501"          # host:container  →  open localhost:8501 in browser
+    volumes:
+      - .:/app               # live-mounts your project folder into the container
+                             # any file changes are reflected without rebuilding
+    restart: unless-stopped  # auto-restarts on crash; stops only when you say so
